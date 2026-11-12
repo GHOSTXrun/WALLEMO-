@@ -109,6 +109,11 @@ jobs:
             await page.locator('.terminal-os').waitFor({timeout:15000})
             await page.getByRole('heading', {level:1, name: 'Give your agent a public beginning.'}).waitFor()
             console.log('BRAND:', await page.locator('body').evaluate(node => ({background:getComputedStyle(node).backgroundColor,color:getComputedStyle(node).color})))
+            await page.getByRole('button', {name: 'CONNECT WALLET', exact: true}).click()
+            await page.locator('.primary-wallets').waitFor()
+            await page.getByRole('button', {name: 'Phantom not detected', exact: true}).waitFor()
+            await page.getByRole('button', {name: 'Backpack not detected', exact: true}).waitFor()
+            console.log('PASS: live Phantom and Backpack connection entries are present')
             console.log('PASS: published VELQON frontend rendered')
           } finally { await browser.close() }
           NODE
