@@ -1,19 +1,30 @@
 import { useState } from 'react'
 import { executeLaunch, EXPLORER_URL, NETWORK, PROGRAM_ID } from './pumpfun'
+import { signedRequest } from './signed-api'
+import { usePlatform } from './PlatformContext'
 
 const short = value => value ? `${value.slice(0, 8)}...${value.slice(-6)}` : 'NOT CONNECTED'
 const errorText = error => error?.shortMessage || error?.details || error?.message || String(error)
 
-export default function RealDialog({ type, close, session, protocol, protocolError, connect }) {
+export default function RealDialog({ type, close, session, protocol, protocolError, connect, disconnect }) {
+  const platform=usePlatform()
+  const [published,setPublished]=useState(false)
   const [step, setStep] = useState(1)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
   const [form, setForm] = useState({
-    agentId: '', manifest: '', name: '', ticker: '', metadataUri: '',
+    agentId: '', manifest: '', name: '', ticker: '', metadataUri: '', description: '', image: '',
     mayhemMode: false, holderReward: false,
   })
   const set = (key, value) => setForm(current => ({ ...current, [key]: value }))
+  function downloadMetadata(){
+    setError('')
+    if(!form.name.trim()||!form.ticker.trim()||!/^https:\/\//i.test(form.image)){setError('Enter a token name, symbol and a public HTTPS image URL before downloading metadata.');return}
+    const metadata={name:form.name.trim(),symbol:form.ticker.trim().toUpperCase(),description:form.description.trim(),image:form.image.trim()}
+    const url=URL.createObjectURL(new Blob([JSON.stringify(metadata,null,2)],{type:'application/json'})),a=document.createElement('a')
+    a.href=url;a.download='velqon-token-metadata.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
+  }
 
   async function runConnect() {
     setBusy(true)
@@ -25,6 +36,7 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
     setBusy(true)
     setError('')
     try {
+      if(result) return
       const launched = await executeLaunch({ provider: session?.provider, publicKey: session?.publicKey, form })
       setResult(launched)
     } catch (cause) {
@@ -33,6 +45,7 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
       setBusy(false)
     }
   }
+  async function publishLaunch(){setBusy(true);setError('');try{await signedRequest(session,'launch',{hash:result.hash,token:result.token},'/api/v1/launches');setPublished(true);window.dispatchEvent(new CustomEvent('velqon:launch'))}catch(error){setError('Transaction stays onchain. Registry publication: '+error.message)}finally{setBusy(false)}}
 
   if (type === 'connect') return (
     <div className="dialog connect-dialog real-connect">
@@ -51,6 +64,7 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
       <button className="dialog-ok" disabled={busy} onClick={session ? close : runConnect}>
         &lt; {busy ? 'WAITING FOR WALLET...' : session ? 'CONTINUE WITH VERIFIED WALLET' : 'CONNECT + SIGN WALLET PROOF'} &gt;
       </button>
+      {session&&<button className="dialog-ok" disabled={busy} onClick={disconnect}>DISCONNECT WALLET</button>}
     </div>
   )
 
@@ -74,8 +88,6 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
           <span>ACCOUNT</span><b>{session?.account || 'NOT CONNECTED'}</b>
           <span>WALLET PROOF</span><b>{session ? 'ED25519 SIGNED + VERIFIED' : 'REQUIRED'}</b>
           <span>NETWORK</span><b>{NETWORK}</b>
-          <span>AGENT ID</span><input value={form.agentId} onChange={event => set('agentId', event.target.value)} placeholder="optional public Agent identifier" />
-          <span>MANIFEST URI</span><input value={form.manifest} onChange={event => set('manifest', event.target.value)} placeholder="optional https:// or ipfs://" />
         </div>
         {!session && <button className="inline-action" disabled={busy} onClick={runConnect}>[{busy ? 'WAITING...' : 'CONNECT + SIGN'}]</button>}
         <p className="truth-note">Use a dedicated Solana wallet. VELQON never asks for a seed phrase or private key.</p>
@@ -87,8 +99,11 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
           <label>TOKEN NAME ........ <input maxLength="32" value={form.name} onChange={event => set('name', event.target.value)} placeholder="1-32 characters" /></label>
           <label>SYMBOL ............ <input maxLength="13" value={form.ticker} onChange={event => set('ticker', event.target.value.toUpperCase())} placeholder="1-13 characters" /></label>
           <label>METADATA URI ...... <input maxLength="200" value={form.metadataUri} onChange={event => set('metadataUri', event.target.value)} placeholder="https://, ipfs:// or ar:// JSON" /></label>
+          <label>DESCRIPTION (OPTIONAL)<textarea maxLength={2000} value={form.description} onChange={event=>set('description',event.target.value)}/></label>
+          <label>IMAGE URL (OPTIONAL)<input maxLength={500} value={form.image} onChange={event=>set('image',event.target.value)} placeholder="https://… / for the metadata helper"/></label>
         </div>
-        <p className="truth-note">The metadata URI must already point to a public JSON document containing the coin name, symbol, description and image. VELQON does not upload files or metadata.</p>
+        <button className="inline-action" onClick={downloadMetadata}>DOWNLOAD METADATA JSON</button>
+        <p className="truth-note">Use the helper to download your metadata JSON, upload it to public HTTPS, IPFS or Arweave storage, then paste its URI above. VELQON does not host metadata or images.</p>
       </div>}
 
       {step === 3 && <div className="launch-step">
@@ -111,11 +126,14 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
           &lt; {busy ? 'SIMULATING / WAITING...' : 'SIGN + CONFIRM PUMP.FUN LAUNCH'} &gt;
         </button>}
         {result && <div className="tx-success">
-          <b>LAUNCH CONFIRMED</b>
+          <b>{result.status==='CONFIRMED'?'LAUNCH CONFIRMED':result.status==='FAILED'?'TRANSACTION FAILED':result.status==='SUBMISSION_UNKNOWN'?'SUBMISSION OUTCOME UNKNOWN':'SUBMITTED / CONFIRMATION PENDING'}</b>
           <span>MINT: {result.token}</span>
           <span>BONDING CURVE: {result.curve}</span>
           <a href={`${EXPLORER_URL}/tx/${result.hash}`} target="_blank" rel="noreferrer">[OPEN TRANSACTION {short(result.hash)}]</a>
           <a href={`https://pump.fun/coin/${result.token}`} target="_blank" rel="noreferrer">[OPEN ON PUMP.FUN]</a>
+          {result.warning&&<span>{result.warning}</span>}{result.storageWarning&&<span>{result.storageWarning}</span>}{result.error&&<span>{result.error}</span>}
+          {result.status==='CONFIRMED'&&platform.connected&&<button disabled={busy||published} onClick={publishLaunch}>{published?'PUBLISHED TO PUBLIC REGISTRY':'SIGN & PUBLISH TO PUBLIC REGISTRY'}</button>}
+          {!platform.connected&&<span>Saved in this browser. Public Registry publication requires the community backend.</span>}
         </div>}
       </div>}
 

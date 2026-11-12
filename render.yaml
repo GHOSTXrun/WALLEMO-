@@ -1,0 +1,23 @@
+# Deployment template. Starter service and persistent disk incur hosting charges.
+# Review the plan in your Render account before creating the service.
+services:
+  - type: web
+    name: velqon
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/v1/health
+    disk:
+      name: velqon-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: VELQON_HOST
+        value: 0.0.0.0
+      - key: VELQON_DB_PATH
+        value: /data/velqon.sqlite
+      - key: VELQON_PUBLIC_ORIGIN
+        sync: false
+      - key: VELQON_ALLOWED_ORIGIN
+        value: https://ghostxrun.github.io,https://velqon.fun,https://www.velqon.fun
+      - key: SOLANA_RPC_URL
+        sync: false

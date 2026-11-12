@@ -24,12 +24,29 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+      - name: Test backend and launch engine
+        run: npm test
       - name: Build
         run: npm run build
+        env:
+          VITE_VELQON_API_ORIGIN: ${{ vars.VELQON_API_ORIGIN }}
+      - name: Verify community flows with a test wallet
+        run: npm run test:browser
+      - name: Check production Docker image
+        run: |
+          docker build -t velqon-ci .
+          docker run --rm -d --name velqon-ci -p 127.0.0.1:4188:4188 velqon-ci
+          trap 'docker rm -f velqon-ci >/dev/null 2>&1 || true' EXIT
+          curl --fail --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:4188/api/v1/health
+      - name: Save browser verification screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: velqon-browser-qa
+          path: velqon-complete-*.png
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

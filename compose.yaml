@@ -1,0 +1,17 @@
+services:
+  velqon:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4188:4188"
+    environment:
+      PORT: 4188
+      VELQON_HOST: 0.0.0.0
+      VELQON_DB_PATH: /data/velqon.sqlite
+      VELQON_PUBLIC_ORIGIN: ${VELQON_PUBLIC_ORIGIN:-http://127.0.0.1:4188}
+      VELQON_ALLOWED_ORIGIN: ${VELQON_ALLOWED_ORIGIN:-https://ghostxrun.github.io,https://velqon.fun,https://www.velqon.fun}
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL:-https://solana-rpc.publicnode.com}
+    volumes:
+      - velqon-data:/data
+volumes:
+  velqon-data:

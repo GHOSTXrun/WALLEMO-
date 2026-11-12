@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { connection, EXPLORER_URL, PROGRAM_ID } from './pumpfun'
+import { connection, EXPLORER_URL, PROGRAM_ID, loadLocalLaunches } from './pumpfun'
+import { apiRequest } from './api'
+import { usePlatform } from './PlatformContext'
+import { signedRequest } from './signed-api'
+import { links } from './config'
 
 const short = value => value ? `${value.slice(0, 8)}...${value.slice(-6)}` : 'N/A'
 const official = {
@@ -11,41 +15,23 @@ const official = {
 }
 
 
-const testTokens = [
-  {
-    id: 'test-1', token: 'TEST 1', ticker: 'TEST', type: 'PUMP.FUN TEST TOKEN',
-    status: 'LEGACY TEST', agent: 'VELQON TEST', network: 'SOLANA MAINNET-BETA',
-    contract: 'AqXqcSX2yLNHsUEp932XZR443Uk8KJWkKYYQeNhRpump',
-    curve: '8DrLzN6U3WGLCgRWAquNsbuRaWhb8ovZhcM5eL57P2o3', txHash: '', pairLabel: 'SOL',
-    description: 'Imported development token from the previous build. This is not the official VELQON token. Inspect the linked mint independently.',
-    proof: 'IMPORTED TEST RECORD',
-  },
-  {
-    id: 'test-2', token: 'TEST 2', ticker: 'TEST', type: 'PUMP.FUN TEST TOKEN',
-    status: 'LEGACY TEST', agent: 'VELQON TEST', network: 'SOLANA MAINNET-BETA',
-    contract: 'F7HRNAN1KPLuYAT1Y2ChdyAsjFw3Gz7sGexhxt3Ppump',
-    curve: '2a28PSokNMjzx7rpiDbXguEerZXVzKWPuhBKyxUuPckC', txHash: '', pairLabel: 'SOL',
-    description: 'Imported development token from the previous build. This is not the official VELQON token. Inspect the linked mint independently.',
-    proof: 'IMPORTED TEST RECORD',
-  },
-]
-
-function loadLaunches() {
-  try { return JSON.parse((localStorage.getItem('velqon-solana-launches') || localStorage.getItem('wallemo-solana-launches')) || '[]') } catch { return [] }
-}
-
 function Pane({ title, meta, className, children }) {
   return <section className={'frame ' + className}><div className="frame-title"><span>|- {title} -|</span><b>{meta}</b></div>{children}</section>
 }
 
-export default function VerifiedMarket() {
+export default function VerifiedMarket({session,onConnect}) {
+  const platform = usePlatform()
+  const [publicLaunches,setPublicLaunches]=useState([])
+  const [publishing,setPublishing]=useState(false)
+  const [publicationMessage,setPublicationMessage]=useState('')
   const [launches, setLaunches] = useState([])
   const [sync, setSync] = useState('SYNCING')
   const [selectedId, setSelectedId] = useState('velqon')
 
   async function refresh() {
-    const stored = loadLaunches()
-    if (!stored.length) { setLaunches([]); setSync('SOLANA READY'); return }
+    if(platform.connected)try{const data=await apiRequest('/api/v1/launches');setPublicLaunches(data.launches||[])}catch{setPublicLaunches([])}
+    const stored = loadLocalLaunches()
+    if (!stored.length) { setLaunches([]); setSync(platform.connected?'REGISTRY CONNECTED':'LOCAL REGISTRY'); return }
     setSync('VERIFYING')
     try {
       const result = await connection.getSignatureStatuses(stored.map(item => item.hash), { searchTransactionHistory: true })
@@ -65,14 +51,15 @@ export default function VerifiedMarket() {
     const update = () => refresh()
     addEventListener('velqon:launch', update)
     return () => removeEventListener('velqon:launch', update)
-  }, [])
+  }, [platform.connected])
 
-  const records = useMemo(() => [official, ...launches.map(item => ({
+  const combined = useMemo(()=>{const entries=new Map(launches.map(item=>[item.hash,item]));for(const item of publicLaunches)entries.set(item.hash,item);return [...entries.values()]},[launches,publicLaunches])
+  const records = useMemo(() => [official, ...combined.map(item => ({
     id: item.id || item.hash,
     token: item.name || 'UNNAMED',
     ticker: item.symbol || 'N/A',
-    type: 'PUMP.FUN CREATE_V2',
-    status: item.status || 'CONFIRMED',
+    type: item.source==='server-verified'?'SERVER-VERIFIED PUMP LAUNCH':'LOCAL BROWSER RECORD',
+    status: item.status || 'SUBMITTED',
     agent: short(item.creator),
     network: 'SOLANA MAINNET-BETA',
     contract: item.token,
@@ -80,9 +67,11 @@ export default function VerifiedMarket() {
     pairLabel: 'SOL',
     txHash: item.hash,
     description: `Created through the Pump program using metadata ${item.metadataUri || 'not recorded'}.`,
-    proof: 'SOLANA PUMP TRANSACTION',
-  })), ...testTokens], [launches])
+    proof: item.source==='server-verified'?'PUMP CREATE_V2 CHECKED BY SERVER':'LOCAL RECORD / INSPECT TRANSACTION',
+    public: item.source==='server-verified',
+  }))], [combined])
   const selected = records.find(item => item.id === selectedId) || records[0]
+  async function publishSelected(){setPublishing(true);setPublicationMessage('');try{await signedRequest(session,'launch',{hash:selected.txHash,token:selected.contract},'/api/v1/launches');await refresh();setPublicationMessage('Published to the public Registry.')}catch(error){setPublicationMessage(error.message)}finally{setPublishing(false)}}
 
   return <main className="main-panes verified-market">
     <Pane title={'INSPECT :: $' + selected.ticker} meta={selected.status} className="inspect-pane project-inspect verified-inspect">
@@ -98,15 +87,17 @@ export default function VerifiedMarket() {
       </dl>
       {selected.contract && <a className="verified-action" href={`${EXPLORER_URL}/token/${selected.contract}`} target="_blank" rel="noreferrer">[OPEN TOKEN ON SOLSCAN]</a>}
       {selected.contract && <a className="verified-action" href={`https://pump.fun/coin/${selected.contract}`} target="_blank" rel="noreferrer">[OPEN ON PUMP.FUN]</a>}
-      {selected.txHash ? <a className="verified-action" href={`${EXPLORER_URL}/tx/${selected.txHash}`} target="_blank" rel="noreferrer">[OPEN SOLANA TRANSACTION]</a> : <button className="execute" disabled>{selected.id === 'velqon' ? '[AWAITING OFFICIAL MINT]' : '[TEST TOKEN VERIFIED]'}</button>}
+      {selected.txHash ? <a className="verified-action" href={`${EXPLORER_URL}/tx/${selected.txHash}`} target="_blank" rel="noreferrer">[OPEN SOLANA TRANSACTION]</a> : <button className="execute" disabled>{selected.id === 'velqon' ? '[AWAITING OFFICIAL MINT]' : '[TRANSACTION NOT AVAILABLE]'}</button>}
+      {selected.txHash&&!selected.public&&platform.connected&&<button className="verified-action" disabled={publishing||['FAILED','NOT FOUND'].includes(selected.status)} onClick={session?publishSelected:onConnect}>{publishing?'VERIFYING…':session?'SIGN & PUBLISH RECORD':'CONNECT TO PUBLISH'}</button>}
+      {publicationMessage&&<p className="registry-notice" role="status">{publicationMessage}</p>}
     </Pane>
 
-    <Pane title="TOKEN REGISTRY :: SOLANA" meta={`${launches.length} PUMP LAUNCH${launches.length === 1 ? '' : 'ES'} / 2 LEGACY TESTS / OFFICIAL CA PENDING`} className="list-pane token-list verified-registry">
+    <Pane title="TOKEN REGISTRY :: SOLANA" meta={`${publicLaunches.length} PUBLIC / ${launches.length} LOCAL / OFFICIAL CA PENDING`} className="list-pane token-list verified-registry">
       <div className="market-controls"><span>DATA SOURCE:</span><button className="on">[SOLANA RPC]</button><button onClick={refresh}>[REFRESH]</button><b>{sync}</b></div>
       <div className="verified-table-head"><span>TOKEN</span><span>RECORD</span><span>STATUS</span><span>MINT</span></div>
       <div className="verified-agent-list">{records.map(record => <button key={record.id} className={(selected.id === record.id ? 'selected ' : '') + (record.id === 'velqon' ? 'official-token-row' : '')} onClick={() => setSelectedId(record.id)}><b>{'$' + record.ticker}</b><span>{record.token}{record.id === 'velqon' && <em>OFFICIAL</em>}</span><span>{record.status}</span><span>{record.contract ? short(record.contract) : 'PENDING'}</span></button>)}</div>
-      <div className="market-summary verified-summary"><span>LOCAL PUMP RECORDS <b>{String(launches.length).padStart(2, '0')}</b></span><span>$VELQON OFFICIAL MINT <b>PENDING</b></span><span>TEST TOKENS <b>02 IMPORTED</b></span><span>SYNC STATE <b>{sync}</b></span></div>
-      <div className="pane-foot">LEGACY TEST RECORDS / OFFICIAL $VELQON MINT NOT ANNOUNCED</div>
+      <div className="market-summary verified-summary"><span>LOCAL RECORDS <b>{String(launches.length).padStart(2, '0')}</b></span><span>$VELQON OFFICIAL MINT <b>PENDING</b></span><span>PUBLIC VERIFIED <b>{publicLaunches.length}</b></span><span>SYNC STATE <b>{sync}</b></span></div>
+      <div className="pane-foot">{platform.connected?'PUBLIC REGISTRY CONNECTED':'PUBLIC REGISTRY: BACKEND CONNECTION PENDING'} / OFFICIAL MINT NOT ANNOUNCED</div>
     </Pane>
 
     <Pane title="PROJECT :: VELQON" meta={sync} className="project-pane velqon-profile velqon-plain verified-project">
@@ -115,16 +106,16 @@ export default function VerifiedMarket() {
         <div className="velqon-token-card">
           <div className="velqon-token-card-head"><b>$VELQON TOKEN</b><span>CA PENDING</span></div>
           <div className="velqon-token-ca"><span>OFFICIAL TOKEN MINT</span><strong>TO BE ANNOUNCED</strong></div>
-          <div className="velqon-token-links"><a href="https://ghostxrun.github.io/WALLEMO-/" target="_blank" rel="noreferrer">[OFFICIAL SITE]</a></div>
+          <div className="velqon-token-links"><a href={links.website||import.meta.env.BASE_URL}>[PROJECT HOME]</a></div>
           <p>No official VELQON mint has been published. Wait for the real address to appear here and through the official VELQON channel.</p>
         </div>
         <div className="velqon-lead">From a private idea to a public onchain record. VELQON gives agent builders a wallet-controlled launch path, inspectable transactions and a place to share what comes next.</div>
-        <div className="velqon-summary"><b>LIVE SYSTEM STATE</b><span>RPC: {sync}</span><span>PROGRAM: {short(PROGRAM_ID)}</span><span>PUMP CREATE: WALLET APPROVAL</span><span>QUOTE: SOL</span><span>LOCAL LAUNCHES: {launches.length}</span><span>LEGACY TEST RECORDS: 2</span></div>
+        <div className="velqon-summary"><b>LIVE SYSTEM STATE</b><span>REGISTRY: {sync}</span><span>PROGRAM: {short(PROGRAM_ID)}</span><span>PUMP CREATE: WALLET APPROVAL</span><span>QUOTE: SOL</span><span>LOCAL LAUNCHES: {launches.length}</span><span>PUBLIC LAUNCHES: {publicLaunches.length}</span></div>
         <Section title="01 / A PUBLIC BEGINNING"><p>Agents are moving from answering questions to participating in markets. VELQON starts at the first public step: a token launch that its builder can inspect and approve.</p></Section>
         <Section title="02 / OWN THE LAUNCH"><p>Connect a Solana wallet, prepare your token metadata and review the launch. Your wallet signs; the browser simulates and submits the transaction through the Pump program.</p></Section>
-        <Section title="03 / LEAVE A TRACE"><p>Confirmed launches from this browser appear in the Registry with mint and transaction links. A public record makes a launch inspectable; it does not certify the agent behind it.</p></Section>
-        <Section title="NEXT / AGENT COORDINATION"><p>Signed agent publishing, richer public profiles and agent-to-agent commerce are directions we are exploring. They are not enabled in this preview.</p></Section>
-        <div className="project-section final-note"><b>OFFICIAL IDENTIFIERS</b><p>Network: Solana mainnet-beta. Pump program: {PROGRAM_ID}. $VELQON mint: PENDING PUBLICATION.</p><p><a href="https://ghostxrun.github.io/WALLEMO-/" target="_blank" rel="noreferrer">[OFFICIAL SITE]</a> <a href="#thesis">[READ THE THESIS]</a> <a href="https://pump.fun" target="_blank" rel="noreferrer">[PUMP.FUN]</a></p></div>
+        <Section title="03 / LEAVE A TRACE"><p>Keep local transaction records and publish confirmed launches to the public Registry with a second wallet signature. The backend checks the mainnet transaction, Pump instruction, mint and creator before accepting a public record.</p></Section>
+        <Section title="NEXT / AGENT COORDINATION"><p>{platform.connected?'Wallet-verified profiles and signed field notes are available below.':'Profiles and signed field notes require the community backend connection.'} Agent-to-agent payments and autonomous trading remain research directions.</p></Section>
+        <div className="project-section final-note"><b>OFFICIAL IDENTIFIERS</b><p>Network: Solana mainnet-beta. Pump program: {PROGRAM_ID}. $VELQON mint: PENDING PUBLICATION.</p><p><a href={links.website||import.meta.env.BASE_URL}>[PROJECT HOME]</a> <a href="#thesis">[READ THE THESIS]</a> <a href="https://pump.fun" target="_blank" rel="noreferrer">[PUMP.FUN]</a></p></div>
       </div>
     </Pane>
   </main>

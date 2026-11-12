@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import BrandStory from './BrandStory'
+import AgentDirectory from './AgentDirectory'
+import ProjectLinks from './ProjectLinks'
 import RealDialog from './RealDialog'
 import LiveAccessPanel from './LiveAccessPanel'
 import LiveRulesPanel from './LiveRulesPanel'
@@ -17,6 +19,7 @@ export default function App(){
  const [command,setCommand]=useState('')
  const [output,setOutput]=useState(['VELQON READY - AGENT ECONOMY / BUILDER PREVIEW'])
  const walletLinked=Boolean(walletSession)
+ useEffect(()=>{const provider=walletSession?.provider;if(!provider?.on)return;const clear=()=>{setWalletSession(null);setOverlay('')};const changed=key=>{if(!key||key.toBase58()!==walletSession.account)clear()};provider.on('disconnect',clear);provider.on('accountChanged',changed);return()=>{provider.removeListener?.('disconnect',clear);provider.removeListener?.('accountChanged',changed)}},[walletSession])
 
  useEffect(()=>{const timer=setInterval(()=>setClock(new Date()),1000);return()=>clearInterval(timer)},[])
  useEffect(()=>{let active=true;readProtocol().then(value=>{if(active){setProtocol(value);setProtocolError('')}}).catch(error=>{if(active)setProtocolError(error.shortMessage||error.message)});return()=>{active=false}},[])
@@ -58,12 +61,14 @@ export default function App(){
   <div className="location"><b>C:\VELQON\MARKET&gt;</b><span>{walletLinked?'WALLET CONTROL PROVED / BUILDER ACCESS SEPARATE':'PUBLIC OBSERVER / READ ONLY'}</span></div>
 
   <BrandStory onLaunch={()=>setOverlay('launch')} onRegistry={()=>scroll('market')}/>
-  <div className="workspace product-workspace triple-workspace" id="market"><VerifiedMarket/></div>
+  <div className="workspace product-workspace triple-workspace" id="market"><VerifiedMarket session={walletSession} onConnect={()=>setOverlay('connect')}/></div>
   <div className="info-row">
    <LiveAccessPanel session={walletSession} protocol={protocol} protocolError={protocolError} onConnect={()=>setOverlay('connect')} onLaunch={()=>setOverlay('launch')}/>
    <LiveRulesPanel/>
   </div>
-  <LiveForum/>
+  <AgentDirectory session={walletSession} onConnect={()=>setOverlay('connect')}/>
+  <LiveForum session={walletSession} onConnect={()=>setOverlay('connect')}/>
+  <ProjectLinks/>
 
   <div className="terminal-footer">
    <form className="prompt" onSubmit={run}><label>C:\VELQON&gt;</label><input value={command} onChange={event=>setCommand(event.target.value)} spellCheck="false"/><span>_</span></form>
@@ -81,6 +86,6 @@ export default function App(){
    <div className="statusline"><span>SOLANA MAINNET</span><span>PUMP {protocol?.enabled?'READY':'CHECKING'}</span><span>FEE {protocol?.feeLabel||'...'}</span><span>FIELD NOTES</span><b>{walletLinked?'WALLET LINKED':'PUBLIC READ'} / WALLET-CONTROLLED LAUNCHES</b></div>
   </div>
 
-  {overlay&&<RealDialog type={overlay} close={()=>setOverlay('')} session={walletSession} protocol={protocol} protocolError={protocolError} connect={async()=>{const next=await connectAndProveWallet();setWalletSession(next);return next}}/>}
+  {overlay&&<RealDialog type={overlay} close={()=>setOverlay('')} session={walletSession} protocol={protocol} protocolError={protocolError} disconnect={async()=>{await walletSession?.provider?.disconnect?.();setWalletSession(null);setOverlay('')}} connect={async()=>{const next=await connectAndProveWallet();setWalletSession(next);return next}}/>}
  </div></div>
 }

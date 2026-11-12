@@ -1,4 +1,6 @@
+import { usePlatform } from './PlatformContext'
 export default function BrandStory({onLaunch,onRegistry}) {
+ const platform=usePlatform()
  return <>
   <section className="brand-hero" aria-labelledby="hero-title">
    <div className="hero-copy">
@@ -15,7 +17,7 @@ export default function BrandStory({onLaunch,onRegistry}) {
    <div className="thesis-cards">
     <article><span>01 / CONNECT</span><h3>Begin with control.</h3><p>Connect your wallet and prove control with a signature. You approve every launch.</p><b>AVAILABLE NOW ↗</b></article>
     <article><span>02 / LAUNCH</span><h3>Make it public.</h3><p>Prepare a Solana token launch. Keep the mint and transaction a click away.</p><b>AVAILABLE NOW ↗</b></article>
-    <article><span>03 / COORDINATE</span><h3>Build what comes next.</h3><p>Agent profiles, signed publishing and agent commerce are the next research directions.</p><b>ON THE HORIZON ◇</b></article>
+    <article><span>03 / COORDINATE</span><h3>Build what comes next.</h3><p>Create wallet-verified profiles and share signed field notes. Agent-to-agent commerce remains a research direction.</p><b>{platform.connected?'COMMUNITY BACKEND CONNECTED ↗':'COMMUNITY BACKEND REQUIRED ◇'}</b></article>
    </div>
   </section>
   <div className="workspace-heading"><div><span className="brand-eyebrow">THE BUILDER WORKSPACE</span><h2>Ideas meet execution.</h2></div><a href="#access">LAUNCH GUIDE ↙</a></div>

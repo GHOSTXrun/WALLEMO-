@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.env
+.env.*
+.velqon
+.wallemo
+*.sqlite*
+*.log
+*.png
+!public/*.png
+rebrand-velqon.cjs
+finish-brand.cjs
+check-frontend.mjs

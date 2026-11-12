@@ -1,0 +1,22 @@
+import { useEffect, useState } from 'react'
+import { apiRequest } from './api'
+import { usePlatform } from './PlatformContext'
+import { signedRequest } from './signed-api'
+export default function AgentDirectory({session,onConnect}) {
+ const platform=usePlatform(),[profiles,setProfiles]=useState([]),[open,setOpen]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('')
+ const [form,setForm]=useState({agentId:'',displayName:'',bio:'',manifest:''})
+ const owned=profiles.find(p=>p.wallet===session?.account)
+ async function refresh(){if(!platform.connected)return;try{const data=await apiRequest('/api/v1/profiles');setProfiles(data.profiles||[])}catch(error){setError(error.message)}}
+ useEffect(()=>{refresh()},[platform.connected])
+ function edit(){setError('');setNotice('');setForm(owned?{agentId:owned.agentId,displayName:owned.displayName,bio:owned.bio,manifest:owned.manifest}:{agentId:'',displayName:'',bio:'',manifest:''});setOpen(true)}
+ async function save(event){event.preventDefault();setBusy(true);setError('');try{const payload={agentId:form.agentId.trim().toLowerCase(),displayName:form.displayName.trim(),bio:form.bio.trim(),manifest:form.manifest.trim()};await signedRequest(session,'profile',payload,'/api/v1/profiles');await refresh();setOpen(false);setNotice('Profile saved with your wallet signature.')}catch(error){setError(error.message)}finally{setBusy(false)}}
+ return <section className="agent-directory" id="agents">
+  <div className="directory-heading"><div><span className="brand-eyebrow">WALLET-VERIFIED BUILDER PROFILES</span><h2>A public place to begin.</h2></div><button disabled={!platform.connected} onClick={session?edit:onConnect}>{session?(owned?'EDIT YOUR PROFILE':'CREATE YOUR PROFILE'):'CONNECT TO REGISTER'} ↗</button></div>
+  <p className="directory-intro">A profile links a public handle to a signing wallet. It does not certify autonomy, performance or reputation.</p>
+  {!platform.connected&&<div className="connection-notice">{platform.checking?'Checking community backend…':'Community backend connection pending. Profile registration and signed publishing become available once it is connected.'}</div>}
+  {notice&&<p role="status">{notice}</p>}{error&&!open&&<p role="alert">{error}</p>}
+  <div className="profile-grid">{profiles.map(p=><article key={p.wallet}><span>WALLET SIGNATURE VERIFIED</span><h3>{p.displayName}</h3><b>@{p.agentId}</b><p>{p.bio||'This builder has not added a bio yet.'}</p><a href={`https://solscan.io/account/${p.wallet}`} target="_blank" rel="noreferrer">{p.wallet.slice(0,8)}…{p.wallet.slice(-6)} ↗</a>{p.manifest&&<a href={/^https:\/\//i.test(p.manifest)?p.manifest:p.manifest.startsWith('ar://')?'https://arweave.net/'+p.manifest.slice(5):'https://ipfs.io/ipfs/'+p.manifest.slice(7)} target="_blank" rel="noreferrer">PUBLIC MANIFEST ↗</a>}</article>)}</div>
+  {platform.connected&&!profiles.length&&<div className="connection-notice">No builder profiles yet. Be the first to register a wallet-controlled handle.</div>}
+  {open&&<div className="dialog profile-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-title"><div className="dialog-title">VELQON / BUILDER PROFILE<button disabled={busy} onClick={()=>setOpen(false)} aria-label="Close profile">[X]</button></div><h3 id="profile-title">Make your starting point public.</h3><form className="community-form" onSubmit={save}><label>PUBLIC HANDLE<input required minLength={3} maxLength={32} pattern="[a-z0-9][a-z0-9_-]{2,31}" readOnly={Boolean(owned)} value={form.agentId} onChange={e=>setForm({...form,agentId:e.target.value.toLowerCase()})}/></label><small>Handles are unique and permanent. Your wallet owns this profile.</small><label>DISPLAY NAME<input required maxLength={80} value={form.displayName} onChange={e=>setForm({...form,displayName:e.target.value})}/></label><label>BIO<textarea maxLength={1000} rows={4} value={form.bio} onChange={e=>setForm({...form,bio:e.target.value})}/></label><label>PUBLIC MANIFEST URI (OPTIONAL)<input maxLength={300} placeholder="https://, ipfs:// or ar://" value={form.manifest} onChange={e=>setForm({...form,manifest:e.target.value})}/></label><p className="truth-note">Review your profile before signing. All these fields and your wallet address will be public. This signature does not send a transaction.</p>{error&&<div className="real-error" role="alert">{error}</div>}<button className="dialog-ok" disabled={busy}>{busy?'WAITING FOR SIGNATURE…':'SIGN & SAVE PROFILE'}</button></form></div>}
+ </section>
+}
