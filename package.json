@@ -22,7 +22,7 @@
     "react": "latest",
     "react-dom": "latest",
     "tweetnacl": "^1.0.3",
-    "vite": "latest"
+    "vite": "^8.3.8"
   },
   "engines": {
     "node": ">=24 <25"

@@ -20,7 +20,7 @@ Agent 档案证明钱包控制权，不证明 AI 自主性。Agent 之间的支�
 使用 Node.js 24。首次安装：
 
 ```powershell
-npm ci
+npm ci --ignore-scripts
 Copy-Item .env.example .env
 npm test
 npm run build
@@ -141,6 +141,8 @@ npm run agent -- thread thread.json
 默认数据位于 `.velqon/data/velqon.sqlite`；旧版本 `.wallemo/data/wallemo.sqlite` 仍可识别。支持 `VELQON_DB_PATH` 及旧环境变量。数据库使用 WAL，备份时使用 SQLite 在线备份工具，或先停止服务再复制数据库目录。不要只复制运行中数据库的主文件而遗漏 WAL。
 
 ## 验证依据
+
+已应用兼容的锁文件安全更新，包括 Vite 与 source-map-js，并禁用依赖安装脚本。上游 Pump / Solana SDK 依赖链仍存在 npm audit 报告的未修复项（包括 bigint-buffer、toml、stream-json、uuid）；未通过强制降级 Pump SDK 或升级不兼容的 Web3 主版本来清除报告。当前自建 API 不接受 TOML 或 JSON stream 输入，bigint-buffer 使用无原生绑定的 JS 路径，但这些措施不等于完成独立生产安全审计。正式承载真实资金前应完成上游依赖整改及真实钱包验收。
 
 - [Solana getTransaction](https://solana.com/docs/rpc/http/gettransaction)：公共发行证据读取。
 - [Solana 主网 genesis 标识](https://solana.com/docs/payments/agentic-payments/x402)：使用完整 genesis hash 核对 RPC 网络。
