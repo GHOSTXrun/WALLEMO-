@@ -16,14 +16,21 @@ await new Promise(r=>app.server.listen(0,'127.0.0.1',r))
 const local=`http://127.0.0.1:${app.server.address().port}`
 const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||(process.platform==='win32'?'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe':'/usr/bin/google-chrome'),headless:true,args:['--no-sandbox']})
 try{
- const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[],key=Keypair.generate()
+ const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[],key=Keypair.generate(),backpackKey=Keypair.generate()
  page.setDefaultTimeout(12000)
  page.on('pageerror',error=>errors.push(error.message))
  await page.exposeFunction('testSignMessage',message=>Array.from(nacl.sign.detached(Uint8Array.from(message),key.secretKey)))
- await page.addInitScript(({publicKey,bytes})=>{
+ await page.exposeFunction('testBackpackSignMessage',message=>Array.from(nacl.sign.detached(Uint8Array.from(message),backpackKey.secretKey)))
+ await page.addInitScript(({publicKey,bytes,backpackPublicKey,backpackBytes})=>{
   const key={toBase58:()=>publicKey,toBytes:()=>Uint8Array.from(bytes)}
-  window.phantom={solana:{isPhantom:true,publicKey:key,connect:async()=>({publicKey:key}),signTransaction:async()=>{throw new Error('No real transactions in this test.')},signMessage:async message=>{if(window.rejectTestSignature)throw new Error('User rejected signature');return {signature:Uint8Array.from(await window.testSignMessage(Array.from(message)))}}}}
- },{publicKey:key.publicKey.toBase58(),bytes:Array.from(key.publicKey.toBytes())})
+  window.walletConnectCounts={phantom:0,backpack:0}
+  window.phantom={solana:{isPhantom:true,publicKey:key,connect:async()=>{window.walletConnectCounts.phantom++;return {publicKey:key}},disconnect:async()=>{},signTransaction:async()=>{throw new Error('No real transactions in this test.')},signMessage:async message=>{if(window.rejectTestSignature)throw new Error('User rejected signature');return {signature:Uint8Array.from(await window.testSignMessage(Array.from(message)))}}}}
+  const backpack={toBase58:()=>backpackPublicKey,toBytes:()=>Uint8Array.from(backpackBytes)}
+  const backpackAccount={address:backpackPublicKey,publicKey:Uint8Array.from(backpackBytes),chains:['solana:mainnet'],features:['solana:signTransaction','solana:signMessage']}
+  // Deliberately omit window.backpack: exercise modern Wallet Standard discovery.
+  const backpackWallet={name:'Backpack',version:'1.0.0',chains:['solana:mainnet'],accounts:[],features:{'standard:connect':{version:'1.0.0',connect:async()=>{window.walletConnectCounts.backpack++;return {accounts:[backpackAccount]}}},'standard:disconnect':{version:'1.0.0',disconnect:async()=>{}},'standard:events':{version:'1.0.0',on:()=>()=>{}},'solana:signMessage':{version:'1.0.0',signMessage:async({message})=>[{signedMessage:message,signature:Uint8Array.from(await window.testBackpackSignMessage(Array.from(message)))}]},'solana:signTransaction':{version:'1.0.0',supportedTransactionVersions:['legacy',0],signTransaction:async()=>{throw new Error('No real transactions in this test.')}}}}
+  window.addEventListener('wallet-standard:app-ready',event=>event.detail.register(backpackWallet))
+ },{publicKey:key.publicKey.toBase58(),bytes:Array.from(key.publicKey.toBytes()),backpackPublicKey:backpackKey.publicKey.toBase58(),backpackBytes:Array.from(backpackKey.publicKey.toBytes())})
  await page.route('**/*',async route=>{
   const url=new URL(route.request().url())
   if(url.hostname!=='velqon.test')return route.abort()
@@ -33,7 +40,15 @@ try{
  await page.goto('https://velqon.test/',{waitUntil:'networkidle'})
  await page.getByRole('button',{name:'CONNECT TO REGISTER'}).waitFor()
  await page.getByRole('button',{name:'CONNECT WALLET',exact:true}).click()
- await page.locator('.real-connect .dialog-ok').first().click()
+ await page.getByRole('dialog').screenshot({path:'velqon-complete-wallets.png'})
+ await page.getByRole('button',{name:'Connect Backpack',exact:true}).click()
+ await page.getByText('WALLET CONNECTED',{exact:true}).waitFor()
+ assert.deepEqual(await page.evaluate(()=>window.walletConnectCounts),{phantom:0,backpack:1})
+ await page.getByRole('button',{name:'VERIFY OWNERSHIP (OPTIONAL)',exact:true}).click()
+ await page.getByRole('dialog').getByText('WALLET PROOF VERIFIED',{exact:true}).waitFor()
+ await page.getByRole('button',{name:'DISCONNECT WALLET',exact:true}).click()
+ await page.getByRole('button',{name:'CONNECT WALLET',exact:true}).click()
+ await page.getByRole('button',{name:'Connect Phantom',exact:true}).click()
  await page.getByText('WALLET CONNECTED',{exact:true}).waitFor()
  await page.evaluate(()=>{window.rejectTestSignature=true})
  await page.getByRole('button',{name:'VERIFY OWNERSHIP (OPTIONAL)',exact:true}).click()
@@ -73,5 +88,5 @@ try{
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false)
  await page.screenshot({path:'velqon-complete-mobile.png',fullPage:true})
  assert.deepEqual(errors,[])
- console.log('PASS: browser wallet proof, profile registration, signed thread, signed reply, escaped content, rejected signature, desktop/mobile layout. No mainnet transactions were sent.')
+ console.log('PASS: separate Backpack and Phantom connections with both installed, wallet proof, profile registration, signed thread, signed reply, escaped content, rejected signature, desktop/mobile layout. No mainnet transactions were sent.')
 }finally{await browser.close();await app.close()}

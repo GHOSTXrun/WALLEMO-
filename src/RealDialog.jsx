@@ -3,6 +3,8 @@ import { executeLaunch, EXPLORER_URL, NETWORK, PROGRAM_ID } from './pumpfun'
 import { signedRequest } from './signed-api'
 import { usePlatform } from './PlatformContext'
 import { detectedWallets } from './wallet'
+import WalletPicker from './WalletPicker'
+import { subscribeStandardWallets } from './standard-wallet'
 
 const short = value => value ? `${value.slice(0, 8)}...${value.slice(-6)}` : 'NOT CONNECTED'
 const errorText = error => error?.shortMessage || error?.details || error?.message || String(error)
@@ -17,7 +19,7 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
   const [wallets,setWallets]=useState(()=>detectedWallets())
   const [selectedWallet,setSelectedWallet]=useState(()=>detectedWallets()[0]?.id||'')
   function refreshWallets(){const found=detectedWallets();setWallets(found);setSelectedWallet(current=>found.some(w=>w.id===current)?current:found[0]?.id||'')}
-  useEffect(()=>{const timers=[setTimeout(refreshWallets,500),setTimeout(refreshWallets,1500)];return()=>timers.forEach(clearTimeout)},[])
+  useEffect(()=>{const unsubscribe=subscribeStandardWallets(refreshWallets),timers=[setTimeout(refreshWallets,500),setTimeout(refreshWallets,1500)];return()=>{unsubscribe();timers.forEach(clearTimeout)}},[])
   const [result, setResult] = useState(null)
   const [form, setForm] = useState({
     agentId: '', manifest: '', name: '', ticker: '', metadataUri: '', description: '', image: '',
@@ -32,11 +34,11 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
     a.href=url;a.download='velqon-token-metadata.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
   }
 
-  async function runConnect() {
+  async function runConnect(descriptor) {
     setBusy(true)
     setError('')
     setWalletFailure(null)
-    try { await connect(wallets.find(wallet=>wallet.id===selectedWallet)) } catch (cause) { setError(errorText(cause));setWalletFailure({stage:cause.stage||'connect',code:cause.code}) } finally { setBusy(false) }
+    try { await connect(descriptor?.provider?descriptor:wallets.find(wallet=>wallet.id===selectedWallet)) } catch (cause) { setError(errorText(cause));setWalletFailure({stage:cause.stage||'connect',code:cause.code}) } finally { setBusy(false) }
   }
   async function runVerify(){setBusy(true);setError('');setWalletFailure(null);try{await verify()}catch(cause){setError(errorText(cause));setWalletFailure({stage:'sign',code:cause.code})}finally{setBusy(false)}}
 
@@ -60,7 +62,7 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
       <div className="dialog-title">VELQON / CONNECT WALLET <button onClick={close} aria-label="Close wallet dialog">[X]</button></div>
       <h3 id="connect-title">CONNECT YOUR SOLANA WALLET</h3>
       <p>Choose your installed wallet and approve account access. Connecting does not request a message signature or a transaction. Each publishing action and launch asks for its own approval.</p>
-      {!session&&<div className="wallet-picker"><label>WALLET<select disabled={busy} value={selectedWallet} onChange={event=>setSelectedWallet(event.target.value)}>{!wallets.length&&<option value="">No Solana wallet detected</option>}{wallets.map(wallet=><option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}</select></label><button disabled={busy} onClick={refreshWallets}>REFRESH WALLET LIST</button>{!wallets.length&&<p>Unlock your wallet extension, then refresh this list. <a href="https://phantom.com/download" target="_blank" rel="noreferrer">GET PHANTOM ↗</a></p>}</div>}
+      {!session&&<WalletPicker wallets={wallets} selected={selectedWallet} onSelect={setSelectedWallet} onConnect={runConnect} onRefresh={refreshWallets} busy={busy}/>}
       <div className="chain-readout">
         <span>NETWORK</span><b>{NETWORK}</b>
         <span>PUMP PROGRAM</span><b>{PROGRAM_ID}</b>
@@ -100,7 +102,7 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
           <span>WALLET PROOF</span><b>{session?.verified ? 'ED25519 SIGNED + VERIFIED' : 'OPTIONAL / NOT SIGNED'}</b>
           <span>NETWORK</span><b>{NETWORK}</b>
         </div>
-        {!session && <><label className="launch-wallet-choice">WALLET<select disabled={busy} value={selectedWallet} onChange={event=>setSelectedWallet(event.target.value)}>{!wallets.length&&<option value="">No wallet detected</option>}{wallets.map(wallet=><option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}</select></label><button className="inline-action" disabled={busy||!wallets.length} onClick={runConnect}>[{busy ? 'WAITING...' : 'CONNECT WALLET'}]</button></>}
+        {!session && <WalletPicker wallets={wallets} selected={selectedWallet} onSelect={setSelectedWallet} onConnect={runConnect} onRefresh={refreshWallets} busy={busy}/>}
         <p className="truth-note">Use a dedicated Solana wallet. VELQON never asks for a seed phrase or private key.</p>
       </div>}
 

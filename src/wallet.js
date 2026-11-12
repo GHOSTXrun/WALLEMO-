@@ -1,5 +1,6 @@
 import { PublicKey } from '@solana/web3.js'
 import nacl from 'tweetnacl'
+import { standardWalletDescriptors } from './standard-wallet.js'
 
 export function publicKeyString(value) {
   try { return new PublicKey(typeof value?.toBase58==='function'?value.toBase58():value).toBase58() } catch { return null }
@@ -7,13 +8,25 @@ export function publicKeyString(value) {
 export function walletAccount(provider) { return publicKeyString(provider?.publicKey) }
 export function detectedWallets(scope=globalThis) {
   const candidates=[
+    ...(scope===globalThis?standardWalletDescriptors().map(wallet=>[wallet.id,wallet.name,wallet.provider]):[]),
     ['phantom','Phantom',scope.phantom?.solana],
+    ['backpack','Backpack',scope.backpack?.solana],
+    ['backpack','Backpack',scope.backpack],
     ['okx','OKX Wallet',scope.okxwallet?.solana],
     ['solflare','Solflare',scope.solflare],
-    ['backpack','Backpack',scope.backpack?.solana||scope.backpack],
     ['injected','Solana Wallet',scope.solana],
-  ],seen=new Set()
-  return candidates.filter(([, ,provider])=>provider&&typeof provider.connect==='function'&&typeof provider.signTransaction==='function'&&!seen.has(provider)&&seen.add(provider)).map(([id,name,provider])=>({id,name:id==='injected'?(provider.isPhantom?'Phantom':provider.isSolflare?'Solflare':provider.isBackpack?'Backpack':name):name,provider}))
+  ],seen=new Set(),ids=new Set(),wallets=[]
+  for(let [id,name,provider] of candidates){
+    if(!provider||typeof provider.connect!=='function'||typeof provider.signTransaction!=='function'||seen.has(provider))continue
+    if(id==='injected'){
+      if(provider.isPhantom){id='phantom';name='Phantom'}
+      else if(provider.isBackpack){id='backpack';name='Backpack'}
+      else if(provider.isSolflare){id='solflare';name='Solflare'}
+    }
+    if(ids.has(id))continue
+    seen.add(provider);ids.add(id);wallets.push({id,name,provider})
+  }
+  return wallets
 }
 export function walletError(error,stage='connect',name='wallet') {
   const code=Number(error?.code??error?.cause?.code)

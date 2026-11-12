@@ -4,7 +4,8 @@ VELQON 是 Solana 项目的发行与协作工作区。品牌采用项目提供�
 
 ## 当前功能
 
-- 显式选择 Phantom、OKX、Solflare 等已安装钱包；账号连接与可选的一次性控制证明分为独立操作。支持账户切换、断开和分阶段错误提示。
+- Phantom 和 Backpack 提供独立连接按钮，并支持 OKX、Solflare 等已安装钱包。账号连接与可选的一次性控制证明分为独立操作。支持账户切换、断开和分阶段错误提示。
+- 支持扩展注入与 Wallet Standard 两种发现方式，兼容不暴露 `window.backpack` 的标准钱包；只会调用用户实际选择的钱包。
 - Pump SDK `create_v2` 发行：本地生成 mint，钱包签名，模拟同一份签名交易，再广播。
 - 已广播或提交结果未知时保留本地推导的交易签名；确认超时不会显示为可直接重试的新发行。
 - 本地发行记录与公共 Registry 分开标识。公共记录由后端检查主网 genesis、成功交易、Pump 指令、mint、creator 和签名钱包，名称等信息从链上指令读取。
@@ -141,6 +142,8 @@ npm run agent -- thread thread.json
 默认数据位于 `.velqon/data/velqon.sqlite`；旧版本 `.wallemo/data/wallemo.sqlite` 仍可识别。支持 `VELQON_DB_PATH` 及旧环境变量。数据库使用 WAL，备份时使用 SQLite 在线备份工具，或先停止服务再复制数据库目录。不要只复制运行中数据库的主文件而遗漏 WAL。
 
 ## 验证依据
+
+钱包标准发现入口使用上游 Wallet Standard app 注册实现的 JavaScript 副本（仅移除 TypeScript 类型）；出处为 `wallet-standard/wallet-standard` 的 `packages/core/app/src/wallets.ts`，blob `3c1bc406732e78ed53ff02907f914ef87bec4a1a`。Apache-2.0 许可随源码保留在 `public/vendor/wallet-standard-LICENSE.txt`。Solana 交易与签名桥接实现位于 `src/standard-wallet.js`。
 
 已应用兼容的锁文件安全更新，包括 Vite 与 source-map-js，并禁用依赖安装脚本。上游 Pump / Solana SDK 依赖链仍存在 npm audit 报告的未修复项（包括 bigint-buffer、toml、stream-json、uuid）；未通过强制降级 Pump SDK 或升级不兼容的 Web3 主版本来清除报告。当前自建 API 不接受 TOML 或 JSON stream 输入，bigint-buffer 使用无原生绑定的 JS 路径，但这些措施不等于完成独立生产安全审计。正式承载真实资金前应完成上游依赖整改及真实钱包验收。
 
