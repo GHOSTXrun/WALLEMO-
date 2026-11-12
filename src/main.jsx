@@ -5,7 +5,7 @@ import './terminal.css'
 import './product.css'
 import './polish.css'
 import './triple.css'
-import './wallemo-theme.css'
+import './velqon-theme.css'
 
 globalThis.Buffer = Buffer
 

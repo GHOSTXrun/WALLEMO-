@@ -37,7 +37,7 @@ export async function connectAndProveWallet() {
   if (!publicKey) throw new Error('The wallet did not return a public key.')
 
   const message = new TextEncoder().encode(
-    `WALLEMO wallet-control proof\nNetwork: Solana mainnet-beta\nWallet: ${publicKey.toBase58()}\nNonce: ${crypto.randomUUID()}\nIssued: ${new Date().toISOString()}\nPurpose: create tokens through pump.fun`,
+    `VELQON wallet-control proof\nNetwork: Solana mainnet-beta\nWallet: ${publicKey.toBase58()}\nNonce: ${crypto.randomUUID()}\nIssued: ${new Date().toISOString()}\nPurpose: create tokens through pump.fun`,
   )
   if (!provider.signMessage) throw new Error('This wallet does not support message signing.')
   const signed = await provider.signMessage(message, 'utf8')
@@ -104,9 +104,9 @@ export async function executeLaunch({ provider, publicKey, form }) {
     creator: publicKey.toBase58(),
     createdAt: new Date().toISOString(),
   }
-  const stored = JSON.parse(localStorage.getItem('wallemo-solana-launches') || '[]')
-  localStorage.setItem('wallemo-solana-launches', JSON.stringify([result, ...stored.filter(item => item.hash !== signature)].slice(0, 100)))
-  window.dispatchEvent(new CustomEvent('wallemo:launch', { detail: result }))
+  const stored = JSON.parse((localStorage.getItem('velqon-solana-launches') || localStorage.getItem('wallemo-solana-launches')) || '[]')
+  localStorage.setItem('velqon-solana-launches', JSON.stringify([result, ...stored.filter(item => item.hash !== signature)].slice(0, 100)))
+  window.dispatchEvent(new CustomEvent('velqon:launch', { detail: result }))
   return result
 }
 

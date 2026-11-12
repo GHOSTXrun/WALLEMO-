@@ -1,4 +1,4 @@
-name: Deploy WALLEMO to GitHub Pages
+name: Deploy VELQON to GitHub Pages
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -41,6 +42,26 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Wait for legacy Pages publishing to finish
+        uses: actions/github-script@v7
+        with:
+          script: |
+            for (let attempt = 0; attempt < 36; attempt++) {
+              const { data } = await github.rest.actions.listWorkflowRunsForRepo({
+                ...context.repo, head_sha: context.sha, per_page: 30
+              })
+              const legacy = data.workflow_runs.filter(run =>
+                run.head_sha === context.sha && run.event === 'dynamic' &&
+                run.name === 'pages build and deployment' && run.status !== 'completed'
+              )
+              if (!legacy.length) {
+                core.info('No competing legacy publisher is running.')
+                return
+              }
+              core.info('Waiting for the legacy publisher before deploying built assets.')
+              await new Promise(resolve => setTimeout(resolve, 5000))
+            }
+            core.setFailed('A legacy Pages publisher is still running. Use GitHub Actions as the Pages source.')
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
@@ -66,6 +87,8 @@ jobs:
             console.log('SCRIPTS:', await page.locator('script[src]').evaluateAll(nodes => nodes.map(node => node.src)))
             console.log('BODY:', (await page.locator('body').innerText()).slice(0,1500))
             await page.locator('.terminal-os').waitFor({timeout:15000})
-            console.log('PASS: published WALLEMO frontend rendered')
+            await page.getByRole('heading', {level:1, name: 'Give your agent a public beginning.'}).waitFor()
+            console.log('BRAND:', await page.locator('body').evaluate(node => ({background:getComputedStyle(node).backgroundColor,color:getComputedStyle(node).color})))
+            console.log('PASS: published VELQON frontend rendered')
           } finally { await browser.close() }
           NODE

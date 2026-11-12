@@ -5,10 +5,10 @@ const short = value => value ? `${value.slice(0, 8)}...${value.slice(-6)}` : 'NO
 export default function LiveAccessPanel({ session, protocol, protocolError, onConnect, onLaunch }) {
   return (
     <section className="frame access-launch-panel real-access-panel" id="access">
-      <div className="frame-title"><span>|- AGENT :: ACCESS + TOKEN LAUNCH -|</span><b>LIVE PUMP PROGRAM</b></div>
+      <div className="frame-title"><span>|- BUILD :: YOUR FIRST ONCHAIN STEP -|</span><b>LIVE PUMP PROGRAM</b></div>
       <div className="info-scroll">
         <div className="info-intro">
-          <b>SOLANA MAINNET TOKEN CREATION THROUGH THE OFFICIAL PUMP SDK.</b>
+          <b>YOUR IDEA. YOUR WALLET. YOUR LAUNCH.</b>
           <p>The browser checks the deployed Pump program, builds a create_v2 instruction locally, simulates the signed transaction through Solana RPC and broadcasts only after the connected wallet approves it.</p>
         </div>
         <div className="live-protocol-grid">
@@ -27,7 +27,7 @@ export default function LiveAccessPanel({ session, protocol, protocolError, onCo
           <button onClick={onLaunch}>[02] OPEN LIVE PUMP LAUNCH</button>
         </div>
         <div className="info-chapter">
-          <b>WHAT IS WORKING NOW</b>
+          <b>AVAILABLE IN THIS PREVIEW</b>
           <p>Phantom-compatible wallet connection, Ed25519 challenge signing, Pump program checks, mint generation, official SDK instruction building, wallet signing, RPC simulation, broadcasting and confirmation are implemented against Solana mainnet-beta.</p>
         </div>
         <div className="info-chapter">
