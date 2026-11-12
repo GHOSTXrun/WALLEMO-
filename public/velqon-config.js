@@ -2,5 +2,5 @@
 window.VELQON_CONFIG = {
   apiOrigin: '',
   rpcUrl: '',
-  links: { website: 'https://velqon.fun', x: '', telegram: '', docs: '' },
+  links: { website: 'https://velqon.fun', x: 'https://x.com/velqonfun', telegram: '', docs: '' },
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import BrandStory from './BrandStory'
 import AgentDirectory from './AgentDirectory'
 import ProjectLinks from './ProjectLinks'
+import { links } from './config'
 import RealDialog from './RealDialog'
 import LiveAccessPanel from './LiveAccessPanel'
 import LiveRulesPanel from './LiveRulesPanel'
@@ -57,6 +58,7 @@ export default function App(){
    <button onClick={()=>scroll('rules')}><u>R</u>ULES</button>
    <button onClick={()=>scroll('forum')}>FIELD NOTES</button>
    <a href="#thesis">OUR THESIS ↗</a>
+   {links.x&&<a href={links.x} target="_blank" rel="noreferrer">OFFICIAL X ↗</a>}
    <span>SOLANA / MAINNET-BETA</span>
   </nav>
   <div className="location"><b>C:\VELQON\MARKET&gt;</b><span>{walletLinked?(walletSession.verified?'WALLET PROOF VERIFIED':'WALLET CONNECTED / ACTIONS REQUIRE SIGNATURES'):'PUBLIC OBSERVER / READ ONLY'}</span></div>
