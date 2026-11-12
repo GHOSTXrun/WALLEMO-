@@ -19,11 +19,11 @@ export default function LiveAccessPanel({ session, protocol, protocolError, onCo
           <span>QUOTE ASSET</span><b>SOL</b>
           <span>RPC SLOT</span><b>{protocol?.slot || 'READING'}</b>
           <span>WALLET</span><b>{short(session?.account)}</b>
-          <span>SIGNATURE</span><b>{session ? 'ED25519 VERIFIED' : 'CHECK AFTER LINK'}</b>
+          <span>OWNERSHIP PROOF</span><b>{session?.verified ? 'ED25519 VERIFIED' : 'OPTIONAL / NOT SIGNED'}</b>
         </div>
         {protocolError && <p className="real-error">RPC ERROR: {protocolError}</p>}
         <div className="info-actions">
-          <button onClick={onConnect}>[01] LINK + PROVE SOLANA WALLET</button>
+          <button onClick={onConnect}>[01] CONNECT SOLANA WALLET</button>
           <button onClick={onLaunch}>[02] OPEN LIVE PUMP LAUNCH</button>
         </div>
         <div className="info-chapter">

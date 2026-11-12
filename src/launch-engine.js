@@ -1,15 +1,16 @@
 import { ComputeBudgetProgram, Keypair, Transaction, VersionedTransaction } from '@solana/web3.js'
 import { validateMetadata, encodeBase58 } from './domain.js'
+import { walletAccount } from './wallet.js'
 export async function executeLaunchWith({connection,sdk,provider,publicKey,form,onSubmitted=()=>{},attempts=45,sleep=ms=>new Promise(r=>setTimeout(r,ms))}) {
  if(!provider||!publicKey)throw new Error('Connect a Solana wallet first.')
- if(provider.publicKey?.toBase58()!==publicKey.toBase58())throw new Error('Wallet account changed. Reconnect first.')
+ if(walletAccount(provider)!==publicKey.toBase58())throw new Error('Wallet account changed. Reconnect first.')
  const {name,symbol,uri}=validateMetadata(form), mint=Keypair.generate()
  const instruction=await sdk.createV2Instruction({mint:mint.publicKey,name,symbol,uri,creator:publicKey,user:publicKey,mayhemMode:Boolean(form.mayhemMode),cashback:false,holderReward:Boolean(form.holderReward)})
  const latest=await connection.getLatestBlockhash('confirmed')
  const transaction=new Transaction({feePayer:publicKey,recentBlockhash:latest.blockhash}).add(ComputeBudgetProgram.setComputeUnitLimit({units:350000}),instruction)
  transaction.partialSign(mint)
  const signed=await provider.signTransaction(transaction)
- if(provider.publicKey?.toBase58()!==publicKey.toBase58())throw new Error('Wallet account changed during signing.')
+ if(walletAccount(provider)!==publicKey.toBase58())throw new Error('Wallet account changed during signing.')
  const wire=signed.serialize()
  // The legacy simulateTransaction overload refreshes blockhashes. Simulate the exact signed bytes instead.
  const simulation=await connection.simulateTransaction(VersionedTransaction.deserialize(wire),{sigVerify:true,commitment:'confirmed'})

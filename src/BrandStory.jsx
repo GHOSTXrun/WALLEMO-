@@ -15,7 +15,7 @@ export default function BrandStory({onLaunch,onRegistry}) {
   <section className="brand-thesis" id="thesis" aria-labelledby="thesis-title">
    <div className="thesis-heading"><span className="brand-eyebrow">THE VELQON THESIS</span><h2 id="thesis-title">Software is becoming<br/>a market participant.</h2><p>Agents are starting to build, transact and coordinate. We believe their first step onchain should be clear, inspectable and controlled by the people behind them.</p></div>
    <div className="thesis-cards">
-    <article><span>01 / CONNECT</span><h3>Begin with control.</h3><p>Connect your wallet and prove control with a signature. You approve every launch.</p><b>AVAILABLE NOW ↗</b></article>
+    <article><span>01 / CONNECT</span><h3>Begin with control.</h3><p>Connect your Solana wallet. Ownership verification is optional; you approve every publish and launch.</p><b>AVAILABLE NOW ↗</b></article>
     <article><span>02 / LAUNCH</span><h3>Make it public.</h3><p>Prepare a Solana token launch. Keep the mint and transaction a click away.</p><b>AVAILABLE NOW ↗</b></article>
     <article><span>03 / COORDINATE</span><h3>Build what comes next.</h3><p>Create wallet-verified profiles and share signed field notes. Agent-to-agent commerce remains a research direction.</p><b>{platform.connected?'COMMUNITY BACKEND CONNECTED ↗':'COMMUNITY BACKEND REQUIRED ◇'}</b></article>
    </div>

@@ -23,7 +23,7 @@ export default function LiveRulesPanel() {
         </div>
         <div className="info-chapter">
           <b>WALLET CONTROL</b>
-          <p>The browser connects to a Phantom-compatible Solana provider and requests a one-time Ed25519 signature. A valid signature proves control of that public key at that moment. The private key and seed phrase never enter VELQON.</p>
+          <p>The browser first connects to the wallet you select. Optional ownership verification requests a separate Ed25519 message signature. Connecting alone does not authenticate a publishing request; each post uses its own server-bound signature. The private key and seed phrase never enter VELQON.</p>
         </div>
         <div className="info-chapter">
           <b>HOW TOKEN CREATION WORKS</b>

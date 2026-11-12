@@ -1,17 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { executeLaunch, EXPLORER_URL, NETWORK, PROGRAM_ID } from './pumpfun'
 import { signedRequest } from './signed-api'
 import { usePlatform } from './PlatformContext'
+import { detectedWallets } from './wallet'
 
 const short = value => value ? `${value.slice(0, 8)}...${value.slice(-6)}` : 'NOT CONNECTED'
 const errorText = error => error?.shortMessage || error?.details || error?.message || String(error)
 
-export default function RealDialog({ type, close, session, protocol, protocolError, connect, disconnect }) {
+export default function RealDialog({ type, close, session, protocol, protocolError, connect, disconnect, verify }) {
   const platform=usePlatform()
   const [published,setPublished]=useState(false)
   const [step, setStep] = useState(1)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [walletFailure,setWalletFailure]=useState(null)
+  const [wallets,setWallets]=useState(()=>detectedWallets())
+  const [selectedWallet,setSelectedWallet]=useState(()=>detectedWallets()[0]?.id||'')
+  function refreshWallets(){const found=detectedWallets();setWallets(found);setSelectedWallet(current=>found.some(w=>w.id===current)?current:found[0]?.id||'')}
+  useEffect(()=>{const timers=[setTimeout(refreshWallets,500),setTimeout(refreshWallets,1500)];return()=>timers.forEach(clearTimeout)},[])
   const [result, setResult] = useState(null)
   const [form, setForm] = useState({
     agentId: '', manifest: '', name: '', ticker: '', metadataUri: '', description: '', image: '',
@@ -29,8 +35,10 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
   async function runConnect() {
     setBusy(true)
     setError('')
-    try { await connect() } catch (cause) { setError(errorText(cause)) } finally { setBusy(false) }
+    setWalletFailure(null)
+    try { await connect(wallets.find(wallet=>wallet.id===selectedWallet)) } catch (cause) { setError(errorText(cause));setWalletFailure({stage:cause.stage||'connect',code:cause.code}) } finally { setBusy(false) }
   }
+  async function runVerify(){setBusy(true);setError('');setWalletFailure(null);try{await verify()}catch(cause){setError(errorText(cause));setWalletFailure({stage:'sign',code:cause.code})}finally{setBusy(false)}}
 
   async function launch() {
     setBusy(true)
@@ -48,22 +56,25 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
   async function publishLaunch(){setBusy(true);setError('');try{await signedRequest(session,'launch',{hash:result.hash,token:result.token},'/api/v1/launches');setPublished(true);window.dispatchEvent(new CustomEvent('velqon:launch'))}catch(error){setError('Transaction stays onchain. Registry publication: '+error.message)}finally{setBusy(false)}}
 
   if (type === 'connect') return (
-    <div className="dialog connect-dialog real-connect">
-      <div className="dialog-title">[*] CONNECT.AGT :: SOLANA WALLET CONTROL PROOF <button onClick={close}>[X]</button></div>
-      <h3>LINK THE AGENT'S SOLANA WALLET</h3>
-      <p>This connects an injected Solana wallet, signs a one-time local challenge and verifies the Ed25519 signature before any pump.fun transaction can be prepared.</p>
+    <div className="dialog connect-dialog real-connect" role="dialog" aria-modal="true" aria-labelledby="connect-title">
+      <div className="dialog-title">VELQON / CONNECT WALLET <button onClick={close} aria-label="Close wallet dialog">[X]</button></div>
+      <h3 id="connect-title">CONNECT YOUR SOLANA WALLET</h3>
+      <p>Choose your installed wallet and approve account access. Connecting does not request a message signature or a transaction. Each publishing action and launch asks for its own approval.</p>
+      {!session&&<div className="wallet-picker"><label>WALLET<select disabled={busy} value={selectedWallet} onChange={event=>setSelectedWallet(event.target.value)}>{!wallets.length&&<option value="">No Solana wallet detected</option>}{wallets.map(wallet=><option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}</select></label><button disabled={busy} onClick={refreshWallets}>REFRESH WALLET LIST</button>{!wallets.length&&<p>Unlock your wallet extension, then refresh this list. <a href="https://phantom.com/download" target="_blank" rel="noreferrer">GET PHANTOM ↗</a></p>}</div>}
       <div className="chain-readout">
         <span>NETWORK</span><b>{NETWORK}</b>
         <span>PUMP PROGRAM</span><b>{PROGRAM_ID}</b>
         <span>PROTOCOL</span><b>{protocolError ? 'RPC ERROR' : protocol?.enabled ? 'CREATE_V2 READY' : 'READING CHAIN...'}</b>
         <span>RPC SLOT</span><b>{protocol?.slot || 'READING...'}</b>
       </div>
-      {session && <div className="wallet-proof"><b>WALLET PROOF VERIFIED</b><span>{session.account}</span><span>Ed25519 signature: VALID</span></div>}
-      <p className="truth-note">The browser never receives the private key. The wallet signs both the proof and the final Solana transaction.</p>
-      {(error || protocolError) && <div className="real-error">ERROR: {error || protocolError}</div>}
-      <button className="dialog-ok" disabled={busy} onClick={session ? close : runConnect}>
-        &lt; {busy ? 'WAITING FOR WALLET...' : session ? 'CONTINUE WITH VERIFIED WALLET' : 'CONNECT + SIGN WALLET PROOF'} &gt;
+      {session && <div className="wallet-proof"><b>WALLET CONNECTED</b><span>{session.walletName} / {session.account}</span><span>{session.verified?'WALLET PROOF VERIFIED':'Optional ownership proof: not requested'}</span></div>}
+      <p className="truth-note">Your wallet keeps its private keys. Optional ownership verification is a separate message-signing step and is not required just to connect.</p>
+      {error&&<div className="real-error" role="alert"><b>{walletFailure?.stage==='sign'?'OWNERSHIP VERIFICATION':'WALLET CONNECTION'}: </b>{error}{Number.isFinite(walletFailure?.code)&&<small className="wallet-error-code">Wallet error code: {walletFailure.code}</small>}</div>}
+      {protocolError&&<p className="wallet-rpc-note">Chain status: {protocolError}. Wallet connection can still proceed.</p>}
+      <button className="dialog-ok" disabled={busy||(!session&&!wallets.length)} onClick={session ? close : runConnect}>
+        {busy ? 'WAITING FOR WALLET…' : session ? 'CONTINUE TO WORKSPACE' : 'CONNECT SELECTED WALLET'}
       </button>
+      {session&&!session.verified&&<button className="dialog-ok wallet-verify" disabled={busy||!session.provider?.signMessage} onClick={runVerify}>VERIFY OWNERSHIP (OPTIONAL)</button>}
       {session&&<button className="dialog-ok" disabled={busy} onClick={disconnect}>DISCONNECT WALLET</button>}
     </div>
   )
@@ -86,10 +97,10 @@ export default function RealDialog({ type, close, session, protocol, protocolErr
         <h3>CONTROLLING SOLANA WALLET</h3>
         <div className="chain-readout">
           <span>ACCOUNT</span><b>{session?.account || 'NOT CONNECTED'}</b>
-          <span>WALLET PROOF</span><b>{session ? 'ED25519 SIGNED + VERIFIED' : 'REQUIRED'}</b>
+          <span>WALLET PROOF</span><b>{session?.verified ? 'ED25519 SIGNED + VERIFIED' : 'OPTIONAL / NOT SIGNED'}</b>
           <span>NETWORK</span><b>{NETWORK}</b>
         </div>
-        {!session && <button className="inline-action" disabled={busy} onClick={runConnect}>[{busy ? 'WAITING...' : 'CONNECT + SIGN'}]</button>}
+        {!session && <><label className="launch-wallet-choice">WALLET<select disabled={busy} value={selectedWallet} onChange={event=>setSelectedWallet(event.target.value)}>{!wallets.length&&<option value="">No wallet detected</option>}{wallets.map(wallet=><option key={wallet.id} value={wallet.id}>{wallet.name}</option>)}</select></label><button className="inline-action" disabled={busy||!wallets.length} onClick={runConnect}>[{busy ? 'WAITING...' : 'CONNECT WALLET'}]</button></>}
         <p className="truth-note">Use a dedicated Solana wallet. VELQON never asks for a seed phrase or private key.</p>
       </div>}
 

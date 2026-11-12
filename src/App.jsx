@@ -7,7 +7,8 @@ import LiveAccessPanel from './LiveAccessPanel'
 import LiveRulesPanel from './LiveRulesPanel'
 import VerifiedMarket from './VerifiedMarket'
 import LiveForum from './LiveForum'
-import { connectAndProveWallet, readProtocol } from './pumpfun'
+import { readProtocol } from './pumpfun'
+import { connectWallet, verifyWalletControl, publicKeyString } from './wallet'
 
 export default function App(){
  const [overlay,setOverlay]=useState('')
@@ -19,7 +20,7 @@ export default function App(){
  const [command,setCommand]=useState('')
  const [output,setOutput]=useState(['VELQON READY - AGENT ECONOMY / BUILDER PREVIEW'])
  const walletLinked=Boolean(walletSession)
- useEffect(()=>{const provider=walletSession?.provider;if(!provider?.on)return;const clear=()=>{setWalletSession(null);setOverlay('')};const changed=key=>{if(!key||key.toBase58()!==walletSession.account)clear()};provider.on('disconnect',clear);provider.on('accountChanged',changed);return()=>{provider.removeListener?.('disconnect',clear);provider.removeListener?.('accountChanged',changed)}},[walletSession])
+ useEffect(()=>{const provider=walletSession?.provider;if(!provider?.on)return;const clear=()=>{setWalletSession(null);setOverlay('')};const changed=key=>{if(publicKeyString(key)!==walletSession.account)clear()};provider.on('disconnect',clear);provider.on('accountChanged',changed);return()=>{provider.removeListener?.('disconnect',clear);provider.removeListener?.('accountChanged',changed)}},[walletSession])
 
  useEffect(()=>{const timer=setInterval(()=>setClock(new Date()),1000);return()=>clearInterval(timer)},[])
  useEffect(()=>{let active=true;readProtocol().then(value=>{if(active){setProtocol(value);setProtocolError('')}}).catch(error=>{if(active)setProtocolError(error.shortMessage||error.message)});return()=>{active=false}},[])
@@ -58,7 +59,7 @@ export default function App(){
    <a href="#thesis">OUR THESIS ↗</a>
    <span>SOLANA / MAINNET-BETA</span>
   </nav>
-  <div className="location"><b>C:\VELQON\MARKET&gt;</b><span>{walletLinked?'WALLET CONTROL PROVED / BUILDER ACCESS SEPARATE':'PUBLIC OBSERVER / READ ONLY'}</span></div>
+  <div className="location"><b>C:\VELQON\MARKET&gt;</b><span>{walletLinked?(walletSession.verified?'WALLET PROOF VERIFIED':'WALLET CONNECTED / ACTIONS REQUIRE SIGNATURES'):'PUBLIC OBSERVER / READ ONLY'}</span></div>
 
   <BrandStory onLaunch={()=>setOverlay('launch')} onRegistry={()=>scroll('market')}/>
   <div className="workspace product-workspace triple-workspace" id="market"><VerifiedMarket session={walletSession} onConnect={()=>setOverlay('connect')}/></div>
@@ -86,6 +87,6 @@ export default function App(){
    <div className="statusline"><span>SOLANA MAINNET</span><span>PUMP {protocol?.enabled?'READY':'CHECKING'}</span><span>FEE {protocol?.feeLabel||'...'}</span><span>FIELD NOTES</span><b>{walletLinked?'WALLET LINKED':'PUBLIC READ'} / WALLET-CONTROLLED LAUNCHES</b></div>
   </div>
 
-  {overlay&&<RealDialog type={overlay} close={()=>setOverlay('')} session={walletSession} protocol={protocol} protocolError={protocolError} disconnect={async()=>{await walletSession?.provider?.disconnect?.();setWalletSession(null);setOverlay('')}} connect={async()=>{const next=await connectAndProveWallet();setWalletSession(next);return next}}/>}
+  {overlay&&<RealDialog type={overlay} close={()=>setOverlay('')} session={walletSession} protocol={protocol} protocolError={protocolError} disconnect={async()=>{await walletSession?.provider?.disconnect?.();setWalletSession(null);setOverlay('')}} connect={async descriptor=>{const next=await connectWallet(descriptor);setWalletSession(next);return next}} verify={async()=>{const next=await verifyWalletControl(walletSession);setWalletSession(next);return next}}/>}
  </div></div>
 }
