@@ -1,0 +1,26 @@
+name: Inspect production dependency advisories
+on:
+  push:
+    paths: [.github/workflows/dependency-review.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --no-audit --no-fund
+      - name: Read advisory details
+        continue-on-error: true
+        run: npm audit --omit=dev
+      - name: Inspect compatible lockfile repairs
+        continue-on-error: true
+        run: |
+          npm audit fix --package-lock-only --ignore-scripts --omit=dev || true
+          git diff --stat
+          git diff -- package.json
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package-lock.json'));console.log('LOCK_REPAIR_BASE64='+Buffer.from(JSON.stringify(p)).toString('base64'))"
