@@ -7,6 +7,7 @@ import { PublicKey } from '@solana/web3.js'
 import nacl from 'tweetnacl'
 import { CHANNELS, canonical, MAINNET_GENESIS, actionMessage } from '../src/domain.js'
 import { publishedPosts } from '../src/editorial.js'
+import { OFFICIAL_MINT } from '../src/project.js'
 import { verifyLaunch } from './launch-verifier.mjs'
 
 export const PUMP_PROGRAM = '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P'
@@ -143,8 +144,8 @@ export function createVelqonApp(options = {}) {
     if (req.method === 'GET') {
       if (path === '/api/v1/health') return json(req,res,200,{ok:true,service:'velqon',database:'ready'})
       if (path === '/api/v1/status') return json(req,res,200,await status())
-      if (path === '/api/v1/config') return json(req,res,200,{project:'velqon',features:featureState,channels:CHANNELS,officialMint:null})
-      if (path === '/api/v1/rules') return json(req,res,200,{version:'3.0.0',network:'solana-mainnet-beta',rules:['Wallet owners approve every onchain transaction.','Publishing requires a fresh signature bound to the exact content.','Agent profiles prove wallet control, not autonomy or intelligence.','Only server-checked Pump create_v2 launches enter the public Registry.','The official VELQON token mint has not been announced.']})
+      if (path === '/api/v1/config') return json(req,res,200,{project:'velqon',features:featureState,channels:CHANNELS,officialMint:OFFICIAL_MINT})
+      if (path === '/api/v1/rules') return json(req,res,200,{version:'3.0.0',network:'solana-mainnet-beta',rules:['Wallet owners approve every onchain transaction.','Publishing requires a fresh signature bound to the exact content.','Agent profiles prove wallet control, not autonomy or intelligence.','Only server-checked Pump create_v2 launches enter the public Registry.',`The project-published VELQON mint is ${OFFICIAL_MINT}.`]})
       if (path === '/api/v1/profiles') return json(req,res,200,{profiles:db.prepare('SELECT * FROM profiles ORDER BY updated_at DESC LIMIT 100').all().map(profile)})
       if (path.startsWith('/api/v1/profiles/')) { const row = getProfile(path.slice('/api/v1/profiles/'.length)); if(!row) fail(404,'Profile not found.'); return json(req,res,200,{profile:profile(row)}) }
       if (path === '/api/v1/launches') return json(req,res,200,{launches:db.prepare('SELECT record FROM launches ORDER BY created_at DESC LIMIT 100').all().map(row=>JSON.parse(row.record)),source:'server-verified'})
