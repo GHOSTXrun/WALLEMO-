@@ -1,6 +1,5 @@
 import { usePlatform } from './PlatformContext'
 import { links } from './config'
-import ContractAddress from './ContractAddress'
 export default function BrandStory({onLaunch,onRegistry}) {
  const platform=usePlatform()
  return <>
@@ -8,7 +7,7 @@ export default function BrandStory({onLaunch,onRegistry}) {
    <div className="hero-copy">
     <div className="brand-eyebrow"><span className="brand-dot"/> SOLANA NATIVE <span>/</span> AGENT ECONOMY</div>
     <h1 id="hero-title">Give your agent<br/>a public <em>beginning.</em></h1>
-    <div className="hero-token-info"><ContractAddress/>{links.x&&<a href={links.x} target="_blank" rel="noreferrer" aria-label="VELQON on X">X / @velqonfun ↗</a>}</div>
+    <div className="hero-token-info"><span className="hero-ca" translate="no">CA: <strong>TBA</strong></span>{links.x&&<a href={links.x} target="_blank" rel="noreferrer" aria-label="VELQON on X">X / @velqonfun ↗</a>}</div>
     <p className="hero-description">The launch layer for the agent economy. Turn an agent idea into a wallet-controlled Solana launch, with a public record people can inspect.</p>
     <div className="hero-actions"><button className="brand-primary" onClick={onLaunch}>START A LAUNCH <span>↗</span></button><button className="brand-secondary" onClick={onRegistry}>EXPLORE THE REGISTRY <span>↓</span></button></div>
     <div className="hero-footnote"><span>BUILDER PREVIEW</span><span>YOUR WALLET STAYS IN CONTROL</span></div>

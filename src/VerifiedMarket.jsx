@@ -4,15 +4,14 @@ import { apiRequest } from './api'
 import { usePlatform } from './PlatformContext'
 import { signedRequest } from './signed-api'
 import { links } from './config'
-import { OFFICIAL_MINT } from './project'
 
 const short = value => value ? `${value.slice(0, 8)}...${value.slice(-6)}` : 'N/A'
 const official = {
   id: 'velqon', token: 'VELQON', ticker: 'VELQON', type: 'OFFICIAL PROJECT TOKEN',
-  status: 'CA ANNOUNCED', agent: 'VELQON NETWORK', network: 'SOLANA MAINNET-BETA',
-  contract: OFFICIAL_MINT, curve: '', txHash: '', pairLabel: 'SOL',
-  description: 'The project-published VELQON token address is listed below. View the mint on Solscan or pump.fun.',
-  proof: 'PROJECT-PUBLISHED ADDRESS',
+  status: 'CA PENDING', agent: 'VELQON NETWORK', network: 'SOLANA MAINNET-BETA',
+  contract: '', curve: '', txHash: '', pairLabel: 'SOL',
+  description: 'The official VELQON token mint has not been published. No address should be treated as official until it appears here.',
+  proof: 'AWAITING OFFICIAL TOKEN MINT',
 }
 
 
@@ -88,27 +87,27 @@ export default function VerifiedMarket({session,onConnect}) {
       </dl>
       {selected.contract && <a className="verified-action" href={`${EXPLORER_URL}/token/${selected.contract}`} target="_blank" rel="noreferrer">[OPEN TOKEN ON SOLSCAN]</a>}
       {selected.contract && <a className="verified-action" href={`https://pump.fun/coin/${selected.contract}`} target="_blank" rel="noreferrer">[OPEN ON PUMP.FUN]</a>}
-      {selected.txHash ? <a className="verified-action" href={`${EXPLORER_URL}/tx/${selected.txHash}`} target="_blank" rel="noreferrer">[OPEN SOLANA TRANSACTION]</a> : !selected.contract&&<button className="execute" disabled>[TRANSACTION NOT AVAILABLE]</button>}
+      {selected.txHash ? <a className="verified-action" href={`${EXPLORER_URL}/tx/${selected.txHash}`} target="_blank" rel="noreferrer">[OPEN SOLANA TRANSACTION]</a> : <button className="execute" disabled>{selected.id === 'velqon' ? '[AWAITING OFFICIAL MINT]' : '[TRANSACTION NOT AVAILABLE]'}</button>}
       {selected.txHash&&!selected.public&&platform.connected&&<button className="verified-action" disabled={publishing||['FAILED','NOT FOUND'].includes(selected.status)} onClick={session?publishSelected:onConnect}>{publishing?'VERIFYING…':session?'SIGN & PUBLISH RECORD':'CONNECT TO PUBLISH'}</button>}
       {publicationMessage&&<p className="registry-notice" role="status">{publicationMessage}</p>}
     </Pane>
 
-    <Pane title="TOKEN REGISTRY :: SOLANA" meta={`${publicLaunches.length} PUBLIC / ${launches.length} LOCAL / CA ANNOUNCED`} className="list-pane token-list verified-registry">
+    <Pane title="TOKEN REGISTRY :: SOLANA" meta={`${publicLaunches.length} PUBLIC / ${launches.length} LOCAL / OFFICIAL CA PENDING`} className="list-pane token-list verified-registry">
       <div className="market-controls"><span>DATA SOURCE:</span><button className="on">[SOLANA RPC]</button><button onClick={refresh}>[REFRESH]</button><b>{sync}</b></div>
       <div className="verified-table-head"><span>TOKEN</span><span>RECORD</span><span>STATUS</span><span>MINT</span></div>
       <div className="verified-agent-list">{records.map(record => <button key={record.id} className={(selected.id === record.id ? 'selected ' : '') + (record.id === 'velqon' ? 'official-token-row' : '')} onClick={() => setSelectedId(record.id)}><b>{'$' + record.ticker}</b><span>{record.token}{record.id === 'velqon' && <em>OFFICIAL</em>}</span><span>{record.status}</span><span>{record.contract ? short(record.contract) : 'PENDING'}</span></button>)}</div>
-      <div className="market-summary verified-summary"><span>LOCAL RECORDS <b>{String(launches.length).padStart(2, '0')}</b></span><span>$VELQON OFFICIAL MINT <b>ANNOUNCED</b></span><span>PUBLIC VERIFIED <b>{publicLaunches.length}</b></span><span>SYNC STATE <b>{sync}</b></span></div>
-      <div className="pane-foot">{platform.connected?'PUBLIC REGISTRY CONNECTED':'PUBLIC REGISTRY: BACKEND CONNECTION PENDING'} / VELQON CA ANNOUNCED</div>
+      <div className="market-summary verified-summary"><span>LOCAL RECORDS <b>{String(launches.length).padStart(2, '0')}</b></span><span>$VELQON OFFICIAL MINT <b>PENDING</b></span><span>PUBLIC VERIFIED <b>{publicLaunches.length}</b></span><span>SYNC STATE <b>{sync}</b></span></div>
+      <div className="pane-foot">{platform.connected?'PUBLIC REGISTRY CONNECTED':'PUBLIC REGISTRY: BACKEND CONNECTION PENDING'} / OFFICIAL MINT NOT ANNOUNCED</div>
     </Pane>
 
     <Pane title="PROJECT :: VELQON" meta={sync} className="project-pane velqon-profile velqon-plain verified-project">
       <div className="velqon-scroll">
         <div className="project-title"><div className="token-glyph">WA</div><div><h2>VELQON</h2><p>THE LAUNCH LAYER FOR THE AGENT ECONOMY</p><span className="signal">BUILDER PREVIEW / SOLANA</span></div></div>
         <div className="velqon-token-card">
-          <div className="velqon-token-card-head"><b>$VELQON TOKEN</b><span>CA ANNOUNCED</span></div>
-          <div className="velqon-token-ca"><span>OFFICIAL TOKEN MINT</span><strong translate="no">{OFFICIAL_MINT}</strong></div>
-          <div className="velqon-token-links"><a href={links.website||import.meta.env.BASE_URL}>[PROJECT HOME]</a><a href={`${EXPLORER_URL}/token/${OFFICIAL_MINT}`} target="_blank" rel="noreferrer">[SOLSCAN]</a><a href={`https://pump.fun/coin/${OFFICIAL_MINT}`} target="_blank" rel="noreferrer">[PUMP.FUN]</a></div>
-          <p>The official project address is published above. Use the full address when checking the token.</p>
+          <div className="velqon-token-card-head"><b>$VELQON TOKEN</b><span>CA PENDING</span></div>
+          <div className="velqon-token-ca"><span>OFFICIAL TOKEN MINT</span><strong>TO BE ANNOUNCED</strong></div>
+          <div className="velqon-token-links"><a href={links.website||import.meta.env.BASE_URL}>[PROJECT HOME]</a></div>
+          <p>No official VELQON mint has been published. Wait for the real address to appear here and through the official VELQON channel.</p>
         </div>
         <div className="velqon-lead">From a private idea to a public onchain record. VELQON gives agent builders a wallet-controlled launch path, inspectable transactions and a place to share what comes next.</div>
         <div className="velqon-summary"><b>LIVE SYSTEM STATE</b><span>REGISTRY: {sync}</span><span>PROGRAM: {short(PROGRAM_ID)}</span><span>PUMP CREATE: WALLET APPROVAL</span><span>QUOTE: SOL</span><span>LOCAL LAUNCHES: {launches.length}</span><span>PUBLIC LAUNCHES: {publicLaunches.length}</span></div>
@@ -116,7 +115,7 @@ export default function VerifiedMarket({session,onConnect}) {
         <Section title="02 / OWN THE LAUNCH"><p>Connect a Solana wallet, prepare your token metadata and review the launch. Your wallet signs; the browser simulates and submits the transaction through the Pump program.</p></Section>
         <Section title="03 / LEAVE A TRACE"><p>Keep local transaction records and publish confirmed launches to the public Registry with a second wallet signature. The backend checks the mainnet transaction, Pump instruction, mint and creator before accepting a public record.</p></Section>
         <Section title="NEXT / AGENT COORDINATION"><p>{platform.connected?'Wallet-verified profiles and signed field notes are available below.':'Profiles and signed field notes require the community backend connection.'} Agent-to-agent payments and autonomous trading remain research directions.</p></Section>
-        <div className="project-section final-note"><b>OFFICIAL IDENTIFIERS</b><p>Network: Solana mainnet-beta. Pump program: {PROGRAM_ID}. $VELQON mint: <span translate="no">{OFFICIAL_MINT}</span>.</p><p><a href={links.website||import.meta.env.BASE_URL}>[PROJECT HOME]</a> <a href="#thesis">[READ THE THESIS]</a> <a href="https://pump.fun" target="_blank" rel="noreferrer">[PUMP.FUN]</a></p></div>
+        <div className="project-section final-note"><b>OFFICIAL IDENTIFIERS</b><p>Network: Solana mainnet-beta. Pump program: {PROGRAM_ID}. $VELQON mint: PENDING PUBLICATION.</p><p><a href={links.website||import.meta.env.BASE_URL}>[PROJECT HOME]</a> <a href="#thesis">[READ THE THESIS]</a> <a href="https://pump.fun" target="_blank" rel="noreferrer">[PUMP.FUN]</a></p></div>
       </div>
     </Pane>
   </main>
