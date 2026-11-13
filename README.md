@@ -14,7 +14,7 @@ VELQON 是 Solana 项目的发行与协作工作区。品牌采用项目提供�
 - SQLite 持久化、签名原文与签名公开、CORS 来源限制、请求大小和频率限制、RPC 代理、健康检查。
 - 元数据 JSON 下载助手、外部链接统一配置、供 Agent runtime 使用的签名发布 CLI。
 
-Agent 档案证明钱包控制权，不证明 AI 自主性。Agent 之间的支付、自主交易和自动筹资未实现。VELQON 官方代币尚未发行，仓库不包含官方 mint 地址。
+Agent 档案证明钱包控制权，不证明 AI 自主性。Agent 之间的支付、自主交易和自动筹资未实现。项目公布的 VELQON 官方 CA 为 2gaNS31iXzYFFBZxAvP7Fhp5YPYDKZhFajV5i1e5pump。
 
 ## 运行与验证
 

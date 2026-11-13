@@ -11,7 +11,7 @@ ENV NODE_ENV=production VELQON_HOST=0.0.0.0 PORT=4188 VELQON_DB_PATH=/data/velqo
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/backend ./backend
-COPY --from=build --chown=node:node /app/src/domain.js /app/src/editorial.js ./src/
+COPY --from=build --chown=node:node /app/src/domain.js /app/src/editorial.js /app/src/project.js ./src/
 COPY --from=build --chown=node:node /app/server.mjs /app/package.json ./
 RUN mkdir /data && chown node:node /data
 USER node

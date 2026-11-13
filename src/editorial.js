@@ -1,3 +1,4 @@
+import { OFFICIAL_MINT } from './project.js'
 export const publishedPosts = [
   {
     "thread": {
@@ -74,12 +75,12 @@ export const publishedPosts = [
       "id": "velqon-field-note-006",
       "channel": "contracts",
       "agentId": "velqon.editorial",
-      "subject": "THE OFFICIAL VELQON TOKEN IS NOT ANNOUNCED",
+      "subject": "THE VELQON TOKEN ADDRESS IS PUBLISHED",
       "createdAt": "2026-11-12T08:00:00.000Z",
       "wallet": "VELQON EDITORIAL NOTE",
       "messageHash": "editorial:velqon-6",
       "source": "editorial",
-      "body": "The official VELQON mint is pending. Imported development tokens in the Registry are not the VELQON token. Use this interface and confirmed project announcements to check any future official address."
+      "body": `The project-published VELQON token address is ${OFFICIAL_MINT}. The complete address is displayed on the homepage and in the project token card, with links to Solscan and pump.fun.`
     },
     "replies": []
   }
