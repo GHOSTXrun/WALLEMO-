@@ -1,1 +1,0 @@
-export const OFFICIAL_MINT = '2gaNS31iXzYFFBZxAvP7Fhp5YPYDKZhFajV5i1e5pump'
